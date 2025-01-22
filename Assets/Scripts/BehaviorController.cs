@@ -2,30 +2,30 @@ using UnityEngine;
 
 public class BehaviorController : MonoBehaviour
 {
-    public GameObject characterPrefab; // Prefab for the character
-    public GameObject targetPrefab;    // Prefab for the target (e.g., power-up for seeking/arrival)
-    public GameObject enemyPrefab;     // Prefab for the enemy (for fleeing)
-    public GameObject obstaclePrefab;  // Prefab for the obstacle (for avoidance)
+    public GameObject characterPrefab; 
+    public GameObject targetPrefab;    
+    public GameObject enemyPrefab;     
+    public GameObject obstaclePrefab;  
 
     private GameObject character;
-    private GameObject targetOrEnemy; // Holds the target (seek/arrival) or enemy (flee)
-    private GameObject obstacle;      // Obstacle for avoidance
+    private GameObject targetOrEnemy; 
+    private GameObject obstacle;      
 
-    public float speed = 5f; // Movement speed
-    private RectTransform canvasRect; // Reference to the Canvas RectTransform
+    public float speed = 5f; 
+    private RectTransform canvasRect; 
 
     private enum BehaviorState { None, Seeking, Fleeing, Arrival, Avoidance }
     private BehaviorState currentState = BehaviorState.None;
 
     void Start()
     {
-        // Find the Canvas and get its RectTransform
+       
         canvasRect = GameObject.Find("Canvas").GetComponent<RectTransform>();
     }
 
     void Update()
     {
-        // Handle key presses for switching behaviors
+        
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
             SwitchBehavior(BehaviorState.Seeking);
@@ -47,7 +47,7 @@ public class BehaviorController : MonoBehaviour
             ResetScene();
         }
 
-        // Execute the current behavior
+        
         if (currentState == BehaviorState.Seeking && character != null && targetOrEnemy != null)
         {
             SeekTarget();
@@ -68,10 +68,10 @@ public class BehaviorController : MonoBehaviour
 
     void ResetScene()
     {
-        // Destroy existing objects
+        
         DestroyExistingObjects();
 
-        // Reset the behavior state to None
+        
         currentState = BehaviorState.None;
 
         Debug.Log("Scene reset. Press 1, 2, etc., to start a behavior.");
@@ -79,13 +79,13 @@ public class BehaviorController : MonoBehaviour
 
     void SwitchBehavior(BehaviorState newState)
     {
-        // Destroy existing objects
+        
         DestroyExistingObjects();
 
-        // Set the new state
+        
         currentState = newState;
 
-        // Spawn objects based on the new behavior
+        
         switch (newState)
         {
             case BehaviorState.Seeking:
@@ -155,19 +155,17 @@ public class BehaviorController : MonoBehaviour
 
     void SpawnCharacterTargetAndObstacle()
 {
-    // Spawn character and target at random positions
+    
     Vector2 characterPos = GetRandomPosition();
     Vector2 targetPos = GetRandomPosition();
 
-    // Calculate the position for the obstacle
-    Vector2 obstaclePos = Vector2.Lerp(characterPos, targetPos, 0.5f); // Midpoint between character and target
+    Vector2 obstaclePos = Vector2.Lerp(characterPos, targetPos, 0.5f); 
 
-    // Instantiate the objects
+    
     character = Instantiate(characterPrefab, canvasRect);
     targetOrEnemy = Instantiate(targetPrefab, canvasRect);
     obstacle = Instantiate(obstaclePrefab, canvasRect);
 
-    // Set their positions
     SetPosition(character, characterPos);
     SetPosition(targetOrEnemy, targetPos);
     SetPosition(obstacle, obstaclePos);
