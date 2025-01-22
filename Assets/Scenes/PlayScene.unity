@@ -170,6 +170,7 @@ MonoBehaviour:
   characterPrefab: {fileID: 4462241257280521722, guid: 9bab2f7579a99f54d8e4a4d365951448, type: 3}
   targetPrefab: {fileID: 1995417856495858679, guid: 2b63ad0167db977438ed4b6df8587900, type: 3}
   enemyPrefab: {fileID: 688791353569243718, guid: 73163fc6fd8af9e4a96a6c0487c079f1, type: 3}
+  obstaclePrefab: {fileID: 819046682074671645, guid: 64f3bb9e68665fd4cb95458fc1af7495, type: 3}
   speed: 250
 --- !u!1 &664664918
 GameObject:
