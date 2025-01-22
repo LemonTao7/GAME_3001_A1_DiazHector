@@ -3,16 +3,18 @@ using UnityEngine;
 public class BehaviorController : MonoBehaviour
 {
     public GameObject characterPrefab; // Prefab for the character
-    public GameObject targetPrefab;    // Prefab for the target (e.g., power-up for seeking)
+    public GameObject targetPrefab;    // Prefab for the target (e.g., power-up for seeking/arrival)
     public GameObject enemyPrefab;     // Prefab for the enemy (for fleeing)
+    public GameObject obstaclePrefab;  // Prefab for the obstacle (for avoidance)
 
     private GameObject character;
-    private GameObject targetOrEnemy; // Holds the target (seek) or enemy (flee)
+    private GameObject targetOrEnemy; // Holds the target (seek/arrival) or enemy (flee)
+    private GameObject obstacle;      // Obstacle for avoidance
 
     public float speed = 5f; // Movement speed
     private RectTransform canvasRect; // Reference to the Canvas RectTransform
 
-    private enum BehaviorState { None, Seeking, Fleeing }
+    private enum BehaviorState { None, Seeking, Fleeing, Arrival, Avoidance }
     private BehaviorState currentState = BehaviorState.None;
 
     void Start()
@@ -32,6 +34,14 @@ public class BehaviorController : MonoBehaviour
         {
             SwitchBehavior(BehaviorState.Fleeing);
         }
+        else if (Input.GetKeyDown(KeyCode.Alpha3))
+        {
+            SwitchBehavior(BehaviorState.Arrival);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha4))
+        {
+            SwitchBehavior(BehaviorState.Avoidance);
+        }
         else if (Input.GetKeyDown(KeyCode.Alpha0))
         {
             ResetScene();
@@ -46,6 +56,14 @@ public class BehaviorController : MonoBehaviour
         {
             FleeFromEnemy();
         }
+        else if (currentState == BehaviorState.Arrival && character != null && targetOrEnemy != null)
+        {
+            ArriveAtTarget();
+        }
+        else if (currentState == BehaviorState.Avoidance && character != null && targetOrEnemy != null && obstacle != null)
+        {
+            AvoidObstacle();
+        }
     }
 
     void ResetScene()
@@ -56,7 +74,6 @@ public class BehaviorController : MonoBehaviour
         // Reset the behavior state to None
         currentState = BehaviorState.None;
 
-        // Optionally, display a message or instruction that the scene has been reset
         Debug.Log("Scene reset. Press 1, 2, etc., to start a behavior.");
     }
 
@@ -79,6 +96,14 @@ public class BehaviorController : MonoBehaviour
                 SpawnCharacterAndEnemy();
                 break;
 
+            case BehaviorState.Arrival:
+                SpawnCharacterAndTarget();
+                break;
+
+            case BehaviorState.Avoidance:
+                SpawnCharacterTargetAndObstacle();
+                break;
+
             case BehaviorState.None:
                 // Do nothing
                 break;
@@ -96,6 +121,11 @@ public class BehaviorController : MonoBehaviour
         {
             Destroy(targetOrEnemy);
             targetOrEnemy = null;
+        }
+        if (obstacle != null)
+        {
+            Destroy(obstacle);
+            obstacle = null;
         }
     }
 
@@ -122,6 +152,27 @@ public class BehaviorController : MonoBehaviour
         SetPosition(character, characterPos);
         SetPosition(targetOrEnemy, enemyPos);
     }
+
+    void SpawnCharacterTargetAndObstacle()
+{
+    // Spawn character and target at random positions
+    Vector2 characterPos = GetRandomPosition();
+    Vector2 targetPos = GetRandomPosition();
+
+    // Calculate the position for the obstacle
+    Vector2 obstaclePos = Vector2.Lerp(characterPos, targetPos, 0.5f); // Midpoint between character and target
+
+    // Instantiate the objects
+    character = Instantiate(characterPrefab, canvasRect);
+    targetOrEnemy = Instantiate(targetPrefab, canvasRect);
+    obstacle = Instantiate(obstaclePrefab, canvasRect);
+
+    // Set their positions
+    SetPosition(character, characterPos);
+    SetPosition(targetOrEnemy, targetPos);
+    SetPosition(obstacle, obstaclePos);
+}
+
 
     Vector2 GetRandomPosition()
     {
@@ -150,7 +201,6 @@ public class BehaviorController : MonoBehaviour
         Vector2 direction = (targetRect.anchoredPosition - charRect.anchoredPosition).normalized;
         Vector2 newPosition = charRect.anchoredPosition + direction * speed * Time.deltaTime;
 
-        // Ensure the new position is within the Canvas bounds
         newPosition = ClampToCanvasBounds(newPosition, charRect);
 
         charRect.anchoredPosition = newPosition;
@@ -165,21 +215,76 @@ public class BehaviorController : MonoBehaviour
         Vector2 direction = (charRect.anchoredPosition - enemyRect.anchoredPosition).normalized;
         Vector2 newPosition = charRect.anchoredPosition + direction * speed * Time.deltaTime;
 
-        // Ensure the new position is within the Canvas bounds
         newPosition = ClampToCanvasBounds(newPosition, charRect);
 
         charRect.anchoredPosition = newPosition;
         RotateTowardsDirection(charRect, direction);
     }
+
+    void ArriveAtTarget()
+    {
+        RectTransform charRect = character.GetComponent<RectTransform>();
+        RectTransform targetRect = targetOrEnemy.GetComponent<RectTransform>();
+
+        Vector2 direction = targetRect.anchoredPosition - charRect.anchoredPosition;
+        float distance = direction.magnitude;
+
+        if (distance > 10f)
+        {
+            direction.Normalize();
+
+            float slowingSpeed = Mathf.Lerp(0, speed, distance / 200f);
+            Vector2 newPosition = charRect.anchoredPosition + direction * slowingSpeed * Time.deltaTime;
+
+            newPosition = ClampToCanvasBounds(newPosition, charRect);
+
+            charRect.anchoredPosition = newPosition;
+            RotateTowardsDirection(charRect, direction);
+        }
+        else
+        {
+            charRect.anchoredPosition = targetRect.anchoredPosition;
+        }
+    }
+
+    void AvoidObstacle()
+    {
+        RectTransform charRect = character.GetComponent<RectTransform>();
+        RectTransform targetRect = targetOrEnemy.GetComponent<RectTransform>();
+        RectTransform obstacleRect = obstacle.GetComponent<RectTransform>();
+
+        Vector2 toTarget = targetRect.anchoredPosition - charRect.anchoredPosition;
+        Vector2 toObstacle = obstacleRect.anchoredPosition - charRect.anchoredPosition;
+        float obstacleDistance = toObstacle.magnitude;
+
+        Vector2 avoidance = Vector2.zero;
+        if (obstacleDistance < 150f)
+        {
+            avoidance = -toObstacle.normalized * (150f - obstacleDistance) / 150f;
+        }
+
+        Vector2 combinedDirection = (toTarget.normalized + avoidance).normalized;
+
+        Vector2 newPosition = charRect.anchoredPosition + combinedDirection * speed * Time.deltaTime;
+
+        newPosition = ClampToCanvasBounds(newPosition, charRect);
+
+        charRect.anchoredPosition = newPosition;
+        RotateTowardsDirection(charRect, combinedDirection);
+
+        if (toTarget.magnitude < 10f)
+        {
+            charRect.anchoredPosition = targetRect.anchoredPosition;
+        }
+    }
+
     Vector2 ClampToCanvasBounds(Vector2 position, RectTransform rectTransform)
     {
-        // Get the canvas size and the character's dimensions
         float canvasWidth = canvasRect.rect.width / 2f;
         float canvasHeight = canvasRect.rect.height / 2f;
         float charWidth = rectTransform.rect.width / 2f;
         float charHeight = rectTransform.rect.height / 2f;
 
-        // Clamp the position to ensure the character stays within the visible canvas area
         position.x = Mathf.Clamp(position.x, -canvasWidth + charWidth, canvasWidth - charWidth);
         position.y = Mathf.Clamp(position.y, -canvasHeight + charHeight, canvasHeight - charHeight);
 
@@ -192,4 +297,3 @@ public class BehaviorController : MonoBehaviour
         rect.rotation = Quaternion.Euler(0, 0, angle);
     }
 }
-
